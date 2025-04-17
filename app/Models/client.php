@@ -9,11 +9,18 @@ class client extends Model
 {
     use HasFactory;
 
+    protected $table = 'client';
     protected $primaryKey = 'ID_CLIENT';
-    protected $fillable = ['ID_USER', 'ADDRESS', 'PHONE'];
-
+    public $timestamps = false;
+    
+    protected $fillable = [
+        'ID_USER',
+        'ADDRESS',
+        'PHONE',
+        'BIRTHDAY'
+    ];
     public function user()
-    {
-        return $this->belongsTo(User::class, 'ID_USER');
-    }
+{
+    return $this->belongsTo(User::class, 'ID_USER');
+}
 }

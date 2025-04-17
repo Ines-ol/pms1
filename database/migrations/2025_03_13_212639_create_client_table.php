@@ -14,8 +14,9 @@ return new class extends Migration
         Schema::create('client', function (Blueprint $table) {
             $table->id('ID_CLIENT'); // Clé primaire auto-incrémentée
             $table->unsignedBigInteger('ID_USER')->nullable(); // Clé étrangère vers la table `user` (nullable)
-            $table->string('ADDRESS', 255)->nullable(); // Adresse du client (nullable)
-            $table->string('PHONE', 20)->nullable(); // Téléphone du client (nullable)
+            $table->string('ADDRESS', 255)->nullable(); 
+            $table->string('PHONE', 20)->nullable(); 
+            $table->string('BIRTHDAY', 255)->nullable();
             
             // Index sur la colonne ID_USER
             $table->index('ID_USER');

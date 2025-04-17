@@ -13,7 +13,11 @@ return new class extends Migration
     {
         Schema::create('property_manager', function (Blueprint $table) {
             $table->id('ID_PROPERTY_MANAGER'); // Clé primaire auto-incrémentée
-            $table->unsignedBigInteger('ID_USER')->nullable(); // Clé étrangère vers la table `user` (nullable)
+            $table->unsignedBigInteger('ID_USER')->nullable(); 
+            $table->string('ADDRESS', 255)->nullable(); 
+            $table->string('PHONE', 20)->nullable(); 
+            $table->string('BIRTHDAY', 255)->nullable(); 
+            
             
             // Index sur la colonne ID_USER
             $table->index('ID_USER');

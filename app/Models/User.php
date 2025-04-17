@@ -19,7 +19,7 @@ class User extends Authenticatable
 
     use HasApiTokens, Notifiable;
     protected $table = 'user'; 
-    protected $primaryKey = 'id_user'; // Spécifier la clé primaire
+    protected $primaryKey = 'ID_USER'; // Spécifier la clé primaire
     protected $fillable = [
         'name',
         'email',
@@ -30,21 +30,8 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
-    public $timestamps = false; 
-    
-    public function client()
-    {
-        return $this->hasOne(Client::class, 'ID_USER');
-    }
-
-    public function employee()
-    {
-        return $this->hasOne(Employee::class, 'ID_USER');
-    }
-
-    public function propertyManager()
-    {
-        return $this->hasOne(PropertyManager::class, 'ID_USER');
-    }
-    
+    public function getAuthPassword()
+{
+    return $this->password;
+}
 }

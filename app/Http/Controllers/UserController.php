@@ -13,7 +13,7 @@ class UserController extends Controller
 {
     
     public function signUp(Request $request)
-{
+    {
     $validated = $request->validate([
         'name' => 'required',
         'email' => 'required|email|unique:user',
@@ -43,32 +43,44 @@ class UserController extends Controller
     ], 201);
 }
 
-   
-
 public function signIn(Request $request)
 {
+    \Log::info('SignIn Attempt: '.$request->email);
+    
     $request->validate([
         'email' => 'required|email',
         'password' => 'required',
     ]);
 
-    // Recherche avec le bon nom de colonne (EMAIL en majuscules)
+    \Log::info('Validation passed');
+
     $user = User::where('EMAIL', $request->email)->first();
 
-    // Vérification du mot de passe
-    if (!$user || !Hash::check($request->password, $user->PASSWORD)) {
-        return response()->json(['message' => 'Invalid credentials'], 401);
+    if (!$user) {
+        \Log::info('User not found');
+        return response()->json(['success' => false, 'message' => 'Email ou mot de passe incorrect'], 401);
     }
 
-    // Création du token en spécifiant explicitement l'ID
-    $token = $user->createToken('auth_token', [
-        'tokenable_id' => $user->ID_USER, // Force l'ID utilisateur
-        'tokenable_type' => User::class,
-    ])->plainTextToken;
+    \Log::info('User found: '.$user->ID_USER);
+    \Log::info('Input password: '.$request->password);
+    \Log::info('Stored hash: '.$user->PASSWORD);
 
+    if (!\Hash::check($request->password, $user->PASSWORD)) {
+        \Log::info('Password mismatch');
+        return response()->json(['success' => false, 'message' => 'Email ou mot de passe incorrect'], 401);
+    }
+
+    \Log::info('Authentication successful');
+    
     return response()->json([
-        'access_token' => $token,
-        'token_type' => 'Bearer',
+        'success' => true,
+        'message' => 'Connexion réussie',
+        'user' => [
+            'id' => $user->ID_USER,
+            'name' => $user->NAME,
+            'email' => $user->EMAIL,
+            'role' => $user->ROLE
+        ]
     ]);
 }
 }

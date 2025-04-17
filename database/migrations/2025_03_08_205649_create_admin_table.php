@@ -12,10 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('admin', function (Blueprint $table) {
-            $table->id();
-            $table->string('email',20);
-            $table->string('test',20);
+            $table->id('ID_ADMIN');
+            $table->unsignedBigInteger('ID_USER')->nullable(); 
+            $table->string('ADDRESS', 255)->nullable(); 
+            $table->string('PHONE', 20)->nullable(); 
+            $table->string('BIRTHDAY', 255)->nullable();
             $table->timestamps();
+
+            $table->index('ID_USER');
         });
     }
 

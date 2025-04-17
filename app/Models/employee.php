@@ -9,8 +9,14 @@ class employee extends Model
 {
     use HasFactory;
 
+    protected $table = 'employee';
     protected $primaryKey = 'ID_EMPLOYEE';
-    protected $fillable = ['ID_USER', 'POSITION'];
+    public $timestamps = false; // Désactive les timestamps
+    
+    protected $fillable = [
+        'ID_USER',
+        'POSITION'
+    ];
 
     public function user()
     {
