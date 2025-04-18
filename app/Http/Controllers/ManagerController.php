@@ -250,4 +250,155 @@ public function deleteRoom(Request $request, $id)
         ], 500);
     }
 }
+
+// invoice 
+
+// liste invoice
+// add invoice
+public function createInvoice(Request $request, $reservationId)
+{
+    // Vérification des permissions
+    // $user = Auth::user();
+    // if (!$user || $user->role !== 'manager') {
+    //     return response()->json([
+    //         'message' => 'Unauthorized - Only managers can create invoices'
+    //     ], 403);
+    // }
+
+    // Trouver la réservation avec les relations
+    $reservation = Reservation::with(['client.user', 'room'])
+        ->find($reservationId);
+
+    if (!$reservation) {
+        return response()->json([
+            'message' => 'Reservation not found'
+        ], 404);
+    }
+
+    // Vérifier si une facture existe déjà
+    $existingInvoice = Invoice::where('ID_RESERVATION', $reservationId)->first();
+    
+    // Si la facture existe, retourner les informations existantes
+    if ($existingInvoice) {
+        return $this->buildInvoiceResponse($existingInvoice, $reservation, 'Invoice already exists');
+    }
+
+    // Calculer le montant (nombre de jours * prix de la chambre)
+    $startDate = \Carbon\Carbon::parse($reservation->START_DATE);
+    $endDate = \Carbon\Carbon::parse($reservation->END_DATE);
+    $days = $startDate->diffInDays($endDate);
+    $amount = $days * $reservation->room->PRICE;
+
+    // Créer la facture
+    $invoice = Invoice::create([
+        'ID_RESERVATION' => $reservation->ID_RESERVATION,
+        'AMOUNT' => $amount,
+        'STATUS' => 'pending'
+    ]);
+
+    // Retourner la réponse avec les informations
+    return $this->buildInvoiceResponse($invoice, $reservation, 'Invoice created successfully', 201);
+}
+
+// Méthode privée pour construire la réponse
+private function buildInvoiceResponse($invoice, $reservation, $message, $statusCode = 200)
+{
+    $startDate = \Carbon\Carbon::parse($reservation->START_DATE);
+    $endDate = \Carbon\Carbon::parse($reservation->END_DATE);
+    $days = $startDate->diffInDays($endDate);
+
+    $response = [
+        'message' => $message,
+        'invoice' => [
+            'id' => $invoice->ID_INVOICE,
+            'reservation_id' => $invoice->ID_RESERVATION,
+            'amount' => $invoice->AMOUNT,
+            'status' => $invoice->STATUS,
+            'created_at' => $invoice->created_at,
+            'updated_at' => $invoice->updated_at
+        ],
+        'reservation_details' => [
+            'client' => [
+                'name' => $reservation->client->user->NAME,
+                'email' => $reservation->client->user->EMAIL,
+                'phone' => $reservation->client->PHONE
+            ],
+            'room' => [
+                'type' => $reservation->room->TYPE,
+                'price_per_night' => $reservation->room->PRICE
+            ],
+            'stay_duration' => $days . ' nights',
+            'total_amount' => $invoice->AMOUNT
+        ]
+    ];
+
+    return response()->json($response, $statusCode);
+}
+// modify invoice 
+public function updateInvoice(Request $request, $invoiceId)
+{
+    // Vérification des permissions
+    // $user = Auth::user();
+    // if (!$user || $user->role !== 'manager') {
+    //     return response()->json([
+    //         'message' => 'Unauthorized - Only managers can update invoices'
+    //     ], 403);
+    // }
+
+    // Validation des données
+    $validator = Validator::make($request->all(), [
+        'amount' => 'sometimes|numeric|min:0',
+        'status' => 'sometimes|in:pending,paid'
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Validation error',
+            'errors' => $validator->errors()
+        ], 422);
+    }
+
+    // Trouver la facture avec la réservation associée
+    $invoice = Invoice::with(['reservation.client.user', 'reservation.room'])
+        ->find($invoiceId);
+
+    if (!$invoice) {
+        return response()->json([
+            'message' => 'Invoice not found'
+        ], 404);
+    }
+
+    // Mise à jour des champs fournis
+    $updateData = [];
+    if ($request->has('amount')) {
+        $updateData['AMOUNT'] = $request->amount;
+    }
+    if ($request->has('status')) {
+        $updateData['STATUS'] = $request->status;
+    }
+
+    // Si aucun champ à mettre à jour
+    if (empty($updateData)) {
+        return $this->buildInvoiceResponse(
+            $invoice, 
+            $invoice->reservation, 
+            'No fields to update', 
+            200
+        );
+    }
+
+    // Mettre à jour la facture
+    $invoice->update($updateData);
+
+    // Rafraîchir le modèle pour obtenir les dernières valeurs
+    $invoice->refresh();
+
+    return $this->buildInvoiceResponse(
+        $invoice, 
+        $invoice->reservation, 
+        'Invoice updated successfully', 
+        200
+    );
+}
+// send invoice 
 }

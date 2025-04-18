@@ -35,5 +35,9 @@ Route::delete('/deletemaintenance/{id}', [AdminController::class, 'deleteMainten
     Route::delete('/deleteroom/{id}', [ManagerController::class, 'deleteRoom']); 
 
     // Routes reservations
-    Route::get('/listereservations', [ManagerController::class, 'listReservations']);  
+    Route::get('/listereservations', [ManagerController::class, 'listReservations']); 
+    
+    // Routes invoices 
+    Route::post('/{id}/addinvoice', [ManagerController::class, 'createInvoice']);
+    Route::put('/updateinvoice/{id}', [ManagerController::class, 'updateInvoice']);
     
