@@ -2,11 +2,174 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\client;
+use App\Models\reservation;
+use App\Models\room;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class ClientController extends Controller
 {
-    public function makeReservation() {
-        // Logique de réservation
+
+    public function updateProfile(Request $request, $clientId)
+{
+    // Validation
+    $validator = Validator::make($request->all(), [
+        'ADDRESS' => 'sometimes|string|max:255',
+        'PHONE' => 'sometimes|string|max:20',
+        'BIRTHDAY' => 'sometimes|date|before:today'
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Validation failed',
+            'errors' => $validator->errors()
+        ], 422);
     }
+
+    // Trouver le client
+    $client = Client::find($clientId);
+    if (!$client) {
+        return response()->json(['message' => 'Client not found'], 404);
+    }
+
+    // Mise à jour
+    try {
+        $client->update($validator->validated());
+        
+        // Rafraîchir le modèle pour obtenir les dernières données
+        $client->refresh();
+        
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'client' => $client
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Update failed',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+    public function createReservation(Request $request)
+    {
+        // Validate the request
+        $validator = Validator::make($request->all(), [
+            'client_id' => 'required|exists:client,ID_CLIENT',
+            'room_id' => 'required|exists:room,ID_ROOM',
+            'start_date' => 'required|date|after_or_equal:today',
+            'end_date' => 'required|date|after:start_date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
+
+        // Check if room is available
+        $room = Room::find($request->room_id);
+        if (!$room->AVAILABLE) {
+            return response()->json(['message' => 'Room is not available'], 400);
+        }
+
+        // Check for overlapping reservations
+        $overlappingReservation = Reservation::where('ID_ROOM', $request->room_id)
+            ->where(function($query) use ($request) {
+                $query->whereBetween('START_DATE', [$request->start_date, $request->end_date])
+                      ->orWhereBetween('END_DATE', [$request->start_date, $request->end_date])
+                      ->orWhere(function($query) use ($request) {
+                          $query->where('START_DATE', '<=', $request->start_date)
+                                ->where('END_DATE', '>=', $request->end_date);
+                      });
+            })
+            ->exists();
+
+        if ($overlappingReservation) {
+            return response()->json(['message' => 'Room is already booked for the selected dates'], 400);
+        }
+
+        // Create the reservation
+        $reservation = Reservation::create([
+            'ID_CLIENT' => $request->client_id,
+            'ID_ROOM' => $request->room_id,
+            'START_DATE' => $request->start_date,
+            'END_DATE' => $request->end_date,
+            'STATUS' => 'pending'
+        ]);
+
+        // Mark room as unavailable
+        $room->AVAILABLE = false;
+        $room->save();
+
+        return response()->json([
+            'message' => 'Reservation created successfully',
+            'reservation' => $reservation
+        ], 201);
+    }
+    // update reservation
+    public function updateReservation(Request $request, $reservationId)
+    {
+        // // 1. Vérifier l'authentification
+        // if (!auth()->check()) {
+        //     return response()->json(['message' => 'Non authentifié'], 401);
+        // }
+    
+        // 2. Récupérer l'utilisateur authentifié
+        $user = auth()->user();
+        
+        // 3. Valider les données
+        $validator = Validator::make($request->all(), [
+            'room_id' => 'sometimes|exists:room,ID_ROOM',
+            'start_date' => 'sometimes|date|after_or_equal:today',
+            'end_date' => 'sometimes|date|after:start_date',
+            'status' => 'sometimes|in:pending,confirmed,cancelled'
+        ]);
+    
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
+    
+        // 4. Récupérer la réservation avec la relation client
+        $reservation = Reservation::with('client')->find($reservationId);
+        
+        if (!$reservation) {
+            return response()->json(['message' => 'Réservation non trouvée'], 404);
+        }
+    
+        // 5. Vérifier que le client existe
+        if (!$reservation->client) {
+            return response()->json(['message' => 'Client associé à la réservation non trouvé'], 404);
+        }
+    
+        // 6. Vérifier les droits d'accès
+        if ($user->ID_USER !== $reservation->client->ID_USER) {
+            return response()->json(['message' => 'Non autorisé à modifier cette réservation'], 403);
+        }
+    
+        // ... reste du code inchangé ...
+    }
+    // Cancel a reservation
+    public function cancelReservation($reservationId)
+    {
+        $reservation = Reservation::findOrFail($reservationId);
+        
+        // Only allow cancellation if reservation is pending or confirmed
+        if (!in_array($reservation->STATUS, ['pending', 'confirmed'])) {
+            return response()->json(['message' => 'Reservation cannot be canceled at this stage'], 400);
+        }
+
+        // Mark room as available again
+        $room = $reservation->room;
+        $room->AVAILABLE = true;
+        $room->save();
+
+        // Update reservation status
+        $reservation->STATUS = 'cancelled';
+        $reservation->save();
+
+        return response()->json(['message' => 'Reservation cancelled successfully']);
+    }
+
 }

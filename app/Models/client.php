@@ -20,7 +20,11 @@ class client extends Model
         'BIRTHDAY'
     ];
     public function user()
-{
+    {
     return $this->belongsTo(User::class, 'ID_USER');
-}
+    }
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class, 'ID_CLIENT');
+    }
 }

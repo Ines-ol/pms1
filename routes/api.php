@@ -6,6 +6,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Middleware\EnsureIsAdmin;
 use App\Http\Controllers\ManagerController;
+use App\Http\Controllers\ClientController;
+
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -40,4 +42,16 @@ Route::delete('/deletemaintenance/{id}', [AdminController::class, 'deleteMainten
     // Routes invoices 
     Route::post('/{id}/addinvoice', [ManagerController::class, 'createInvoice']);
     Route::put('/updateinvoice/{id}', [ManagerController::class, 'updateInvoice']);
+
+//Routes client (reservation , paiement , service )
+
+    //update compte
+    Route::put('/{clientId}/updateprofile', [ClientController::class, 'updateProfile']);
+
+    // Routes reservation 
+    Route::get('/available', [ClientController::class, 'getAvailableRooms']);
+    Route::post('/addreservation', [ClientController::class, 'createReservation']);
+    Route::put('/updatereservation/{reservationId}', [ClientController::class, 'updateReservation']);
+    Route::delete('/cancelreserva{reservationId}', [ClientController::class, 'cancelReservation']);
+
     

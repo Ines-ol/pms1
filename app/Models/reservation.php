@@ -19,15 +19,16 @@ class reservation extends Model
         'STATUS'
     ];
 
-    // Relation avec la chambre
     public function room()
     {
         return $this->belongsTo(Room::class, 'ID_ROOM');
     }
-
-    // Relation avec le client
     public function client()
     {
         return $this->belongsTo(Client::class, 'ID_CLIENT');
+    }
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class, 'ID_RESERVATION');
     }
 }

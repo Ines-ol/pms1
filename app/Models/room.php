@@ -22,4 +22,8 @@ class room extends Model
         'AVAILABLE' => 'boolean',
         'PRICE' => 'double'
     ];
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class, 'ID_ROOM');
+    }
 }
