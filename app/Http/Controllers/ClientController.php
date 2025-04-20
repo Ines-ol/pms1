@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\client;
 use App\Models\reservation;
 use App\Models\room;
+use App\Models\User;
+use App\Models\serviceRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -12,48 +14,85 @@ use Illuminate\Support\Facades\Validator;
 class ClientController extends Controller
 {
 
-    public function updateProfile(Request $request, $clientId)
-{
-    // Validation
-    $validator = Validator::make($request->all(), [
-        'ADDRESS' => 'sometimes|string|max:255',
-        'PHONE' => 'sometimes|string|max:20',
-        'BIRTHDAY' => 'sometimes|date|before:today'
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json([
-            'message' => 'Validation failed',
-            'errors' => $validator->errors()
-        ], 422);
-    }
-
-    // Trouver le client
-    $client = Client::find($clientId);
-    if (!$client) {
-        return response()->json(['message' => 'Client not found'], 404);
-    }
-
-    // Mise à jour
-    try {
-        $client->update($validator->validated());
-        
-        // Rafraîchir le modèle pour obtenir les dernières données
-        $client->refresh();
-        
-        return response()->json([
-            'message' => 'Profile updated successfully',
-            'client' => $client
+    public function updateClientProfile(Request $request, $clientId)
+    {
+        // Validation des données
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|max:255|unique:user,EMAIL,'.$clientId.',ID_USER',
+            'password' => 'sometimes|string|min:8',
+            'phone' => 'sometimes|string|max:20',
+            'address' => 'sometimes|string|max:255',
+            'birthday' => 'sometimes|date_format:Y-m-d',
+            'update_token' => 'sometimes|string' // Token optionnel
         ]);
+    
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+    
+        // Trouver le client
+        $client = Client::find($clientId);
         
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Update failed',
-            'error' => $e->getMessage()
-        ], 500);
-    }
-}
+        if (!$client) {
+            return response()->json([
+                'message' => 'Client not found'
+            ], 404);
+        }
 
+    
+        DB::beginTransaction();
+        try {
+            // Mettre à jour l'utilisateur associé
+            $user = User::find($client->ID_USER);
+            
+            if ($request->has('name')) {
+                $user->NAME = $request->name;
+            }
+            
+            if ($request->has('email')) {
+                $user->EMAIL = $request->email;
+            }
+            
+            if ($request->has('password')) {
+                $user->PASSWORD = Hash::make($request->password);
+            }
+            $user->save();
+    
+            // Mettre à jour le client
+            if ($request->has('phone')) {
+                $client->PHONE = $request->phone;
+            }
+            
+            if ($request->has('address')) {
+                $client->ADDRESS = $request->address;
+            }
+            
+            if ($request->has('birthday')) {
+                $client->BIRTHDAY = $request->birthday;
+            }
+            $client->save();
+    
+            DB::commit();
+    
+            return response()->json([
+                'message' => 'Client profile updated successfully',
+                'client_id' => $client->ID_CLIENT,
+                'changes' => $request->all() // Retourne les champs modifiés
+            ]);
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    // reservation 
     public function createReservation(Request $request)
     {
         // Validate the request
@@ -171,5 +210,42 @@ class ClientController extends Controller
 
         return response()->json(['message' => 'Reservation cancelled successfully']);
     }
+
+
+
+    // paiement 
+    public function requestService(Request $request)
+{
+    // Validation des données
+    $validator = Validator::make($request->all(), [
+        'client_id' => 'required|exists:client,ID_CLIENT',
+        'description' => 'required|string|max:1000',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json($validator->errors(), 400);
+    }
+
+    // Création de la demande de service
+    try {
+        $serviceRequest = ServiceRequest::create([
+            'ID_CLIENT' => $request->client_id,
+            'DESCRIPTION' => $request->description,
+            'STATUS' => 'pending'
+        ]);
+
+        return response()->json([
+            'message' => 'Demande de service créée avec succès',
+            'service_request' => $serviceRequest
+        ], 201);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Erreur lors de la création de la demande',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
 
 }

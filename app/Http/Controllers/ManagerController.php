@@ -9,12 +9,100 @@ use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Invoice;
 use App\Models\ServiceRequest;
+use App\Models\propertyManager;
+use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class ManagerController extends Controller
 {
+    // update compte  
 
+public function updateManagerProfile(Request $request, $managerId)
+{
+    // Validation des données (token optionnel)
+    $validator = Validator::make($request->all(), [
+        'name' => 'sometimes|string|max:255',
+        'email' => 'sometimes|string|email|max:255|unique:user,EMAIL,'.$managerId.',ID_USER',
+        'password' => 'sometimes|string|min:8',
+        'phone' => 'sometimes|string|max:20',
+        'address' => 'sometimes|string|max:255',
+        'birthday' => 'sometimes|date_format:Y-m-d',
+        'update_token' => 'sometimes|string' // Rendre le token optionnel
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Validation error',
+            'errors' => $validator->errors()
+        ], 422);
+    }
+
+    // Trouver le manager
+    $manager = PropertyManager::find($managerId);
+    
+    if (!$manager) {
+        return response()->json([
+            'message' => 'Manager not found'
+        ], 404);
+    }
+
+    // Vérification conditionnelle du token si fourni
+    if ($request->has('update_token') && $manager->token_secret !== $request->update_token) {
+        return response()->json([
+            'message' => 'Invalid update token'
+        ], 401);
+    }
+
+    DB::beginTransaction();
+    try {
+        // Mettre à jour l'utilisateur associé
+        $user = User::find($manager->ID_USER);
+        
+        if ($request->has('name')) {
+            $user->NAME = $request->name;
+        }
+        
+        if ($request->has('email')) {
+            $user->EMAIL = $request->email;
+        }
+        
+        if ($request->has('password')) {
+            $user->PASSWORD = Hash::make($request->password);
+        }
+        $user->save();
+
+        // Mettre à jour le manager
+        if ($request->has('phone')) {
+            $manager->PHONE = $request->phone;
+        }
+        
+        if ($request->has('address')) {
+            $manager->ADDRESS = $request->address;
+        }
+        
+        if ($request->has('birthday')) {
+            $manager->BIRTHDAY = $request->birthday;
+        }
+        $manager->save();
+
+        DB::commit();
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'manager_id' => $manager->ID_PROPERTY_MANAGER,
+            'changes' => $request->all() // Retourne les champs modifiés
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Update failed',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 
     //rooms
 

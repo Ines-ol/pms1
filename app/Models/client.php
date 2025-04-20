@@ -21,7 +21,7 @@ class client extends Model
     ];
     public function user()
     {
-    return $this->belongsTo(User::class, 'ID_USER');
+        return $this->belongsTo(User::class, 'ID_USER', 'ID_USER');
     }
     public function reservations()
     {

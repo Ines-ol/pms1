@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Middleware\EnsureIsAdmin;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ClientController;
@@ -30,6 +31,8 @@ Route::put('/updatemaintenance/{id}', [AdminController::class, 'updateMaintenanc
 Route::delete('/deletemaintenance/{id}', [AdminController::class, 'deleteMaintenanceRequest']);
 
 //Route manager ( rooms , services )
+    // Routes update compte 
+    Route::put('/updatemanager/{id}', [ManagerController::class, 'updateManagerProfile']);
     //Routes rooms
     Route::get('/listerooms', [ManagerController::class, 'listRooms']);
     Route::post('/addroom', [ManagerController::class, 'addRoom']);
@@ -43,10 +46,10 @@ Route::delete('/deletemaintenance/{id}', [AdminController::class, 'deleteMainten
     Route::post('/{id}/addinvoice', [ManagerController::class, 'createInvoice']);
     Route::put('/updateinvoice/{id}', [ManagerController::class, 'updateInvoice']);
 
-//Routes client (reservation , paiement , service )
+//Routes client ( compte , reservation , paiement , service )
 
     //update compte
-    Route::put('/{clientId}/updateprofile', [ClientController::class, 'updateProfile']);
+    Route::put('/{clientId}/updateclient', [ClientController::class, 'updateClientProfile']);
 
     // Routes reservation 
     Route::get('/available', [ClientController::class, 'getAvailableRooms']);
@@ -54,4 +57,16 @@ Route::delete('/deletemaintenance/{id}', [AdminController::class, 'deleteMainten
     Route::put('/updatereservation/{reservationId}', [ClientController::class, 'updateReservation']);
     Route::delete('/cancelreserva{reservationId}', [ClientController::class, 'cancelReservation']);
 
+    // Routes service 
+    Route::post('/servicerequest', [ClientController::class, 'requestService']);
+
+//Routes employee(compte , reservation , paiement , service , rooms )
+
+    // update compte 
+    Route::put('/{employeeId}/updateemployee', [EmployeeController::class, 'updateEmployeeProfile']);
     
+    // liste rooms
+    Route::get('/allrooms', [EmployeeController::class, 'getAllRooms']);
+
+    // liste service 
+    Route::get('/{clientId}/allservice', [EmployeeController::class, 'getClientServices']);

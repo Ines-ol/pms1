@@ -11,7 +11,7 @@ class employee extends Model
 
     protected $table = 'employee';
     protected $primaryKey = 'ID_EMPLOYEE';
-    public $timestamps = false; // Désactive les timestamps
+    public $timestamps = false; 
     
     protected $fillable = [
         'ID_USER',
