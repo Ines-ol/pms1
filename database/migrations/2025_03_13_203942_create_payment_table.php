@@ -12,13 +12,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payment', function (Blueprint $table) {
-            $table->id('ID_PAYMENT'); // Clé primaire auto-incrémentée
-            $table->unsignedBigInteger('ID_RESERVATION')->nullable(); // Clé étrangère vers la table `reservation` (nullable)
-            $table->double('AMOUNT'); // Montant du paiement
-            $table->enum('METHOD', ['cash', 'credit_card', 'bank_transfer']); // Méthode de paiement (enum)
-            $table->enum('STATUS', ['pending', 'completed'])->default('pending'); // Statut du paiement (enum avec valeur par défaut)
+            $table->id('ID_PAYMENT');
+            $table->unsignedBigInteger('ID_RESERVATION')->nullable();
+            $table->string('FIRST_NAME', 100)->nullable();
+            $table->string('LAST_NAME', 100)->nullable();
+            $table->string('CARD_NUMBER', 20)->nullable();
+            $table->string('EXPIRATION_DATE', 10)->nullable(); // Format: MM/YYYY
+            $table->string('CVV', 4)->nullable();
+            $table->enum('METHOD', ['cash', 'credit_card', 'bank_transfer'])->nullable();
+            $table->double('AMOUNT');
+            $table->enum('STATUS', ['pending', 'completed'])->default('pending');
+            $table->string('TRANSACTION_ID', 100)->nullable();
+            $table->timestamp('PAYMENT_DATE')->nullable();
             
-            // Index sur la colonne ID_RESERVATION
             $table->index('ID_RESERVATION');
         });
     }
