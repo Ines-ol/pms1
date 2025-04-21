@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('CARD_NUMBER', 20)->nullable();
             $table->string('EXPIRATION_DATE', 10)->nullable(); // Format: MM/YYYY
             $table->string('CVV', 4)->nullable();
-            $table->enum('METHOD', ['cash', 'credit_card', 'bank_transfer'])->nullable();
+            $table->enum('METHOD', ['cash', 'credit_card', 'bank_transfer', ])->nullable();
             $table->double('AMOUNT');
             $table->enum('STATUS', ['pending', 'completed'])->default('pending');
             $table->string('TRANSACTION_ID', 100)->nullable();
