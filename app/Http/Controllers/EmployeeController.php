@@ -167,5 +167,117 @@ class EmployeeController extends Controller
     }
     // paiement 
     // resrevations 
+        // create reservation
+        public function createReservationAsEmployee(Request $request)
+    {
+    // Validation
+    $validator = Validator::make($request->all(), [
+        'client_id' => 'required|exists:client,ID_CLIENT',
+        'room_id' => 'required|exists:room,ID_ROOM',
+        'start_date' => 'required|date|after_or_equal:today',
+        'end_date' => 'required|date|after:start_date',
+        'status' => 'sometimes|in:pending,confirmed' // L'employé peut définir le statut
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json($validator->errors(), 400);
+    }
+
+    // Vérification de la disponibilité de la chambre
+    $room = Room::find($request->room_id);
+    if (!$room->AVAILABLE && $request->status !== 'confirmed') {
+        return response()->json(['message' => 'Room is not available'], 400);
+    }
+
+    // Vérification des réservations qui se chevauchent
+    $overlapping = Reservation::where('ID_ROOM', $request->room_id)
+        ->where(function($query) use ($request) {
+            $query->whereBetween('START_DATE', [$request->start_date, $request->end_date])
+                  ->orWhereBetween('END_DATE', [$request->start_date, $request->end_date])
+                  ->orWhere(function($query) use ($request) {
+                      $query->where('START_DATE', '<=', $request->start_date)
+                            ->where('END_DATE', '>=', $request->end_date);
+                  });
+        })
+        ->exists();
+
+    if ($overlapping) {
+        return response()->json(['message' => 'Room is already booked for these dates'], 400);
+    }
+
+    DB::beginTransaction();
+    try {
+        // Création de la réservation
+        $reservation = Reservation::create([
+            'ID_CLIENT' => $request->client_id,
+            'ID_ROOM' => $request->room_id,
+            'START_DATE' => $request->start_date,
+            'END_DATE' => $request->end_date,
+            'STATUS' => $request->status ?? 'confirmed' // Par défaut "confirmed" pour les employés
+        ]);
+
+        // Marquer la chambre comme indisponible si le statut est "confirmed"
+        if ($reservation->STATUS === 'confirmed') {
+            $room->AVAILABLE = false;
+            $room->save();
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'message' => 'Reservation created successfully',
+            'reservation' => $reservation
+        ], 201);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Reservation creation failed',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+    }
+
+        // delete reservation
+        public function deleteReservation($reservationId)
+    {
+    DB::beginTransaction();
+    try {
+        // Trouver la réservation
+        $reservation = Reservation::find($reservationId);
+        
+        if (!$reservation) {
+            return response()->json([
+                'message' => 'Reservation not found'
+            ], 404);
+        }
+
+        // Trouver la chambre associée
+        $room = Room::find($reservation->ID_ROOM);
+        
+        // Supprimer la réservation
+        $reservation->delete();
+
+        // Si la chambre existe et que la réservation était confirmée, marquer la chambre comme disponible
+        if ($room && $reservation->STATUS === 'confirmed') {
+            $room->AVAILABLE = true;
+            $room->save();
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'message' => 'Reservation deleted successfully',
+            'reservation_id' => $reservationId
+        ], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Failed to delete reservation',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+    }
  
 }

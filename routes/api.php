@@ -55,7 +55,7 @@ Route::delete('/deletemaintenance/{id}', [AdminController::class, 'deleteMainten
     Route::get('/available', [ClientController::class, 'getAvailableRooms']);
     Route::post('/addreservation', [ClientController::class, 'createReservation']);
     Route::put('/updatereservation/{reservationId}', [ClientController::class, 'updateReservation']);
-    Route::delete('/cancelreserva{reservationId}', [ClientController::class, 'cancelReservation']);
+    Route::delete('/cancelreserva/{reservationId}', [ClientController::class, 'cancelReservation']);
 
     // Routes service 
     Route::post('/servicerequest', [ClientController::class, 'requestService']);
@@ -70,3 +70,7 @@ Route::delete('/deletemaintenance/{id}', [AdminController::class, 'deleteMainten
 
     // liste service 
     Route::get('/{clientId}/allservice', [EmployeeController::class, 'getClientServices']);
+
+    //  reservation 
+    Route::post('/createreserva', [EmployeeController::class, 'createReservationAsEmployee']);
+    Route::delete('/deletereserva/{reservationId}', [EmployeeController::class, 'deleteReservation']);
