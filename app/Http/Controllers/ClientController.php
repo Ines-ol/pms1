@@ -211,11 +211,9 @@ class ClientController extends Controller
         return response()->json(['message' => 'Reservation cancelled successfully']);
     }
 
-
-
-    // paiement 
+    // services   
     public function requestService(Request $request)
-{
+    {
     // Validation des données
     $validator = Validator::make($request->all(), [
         'client_id' => 'required|exists:client,ID_CLIENT',
@@ -245,7 +243,9 @@ class ClientController extends Controller
             'error' => $e->getMessage()
         ], 500);
     }
-}
+    }
+
+    //paiement 
 
 
 }
