@@ -10,10 +10,6 @@ use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ClientController;
 
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
-
 // Routes user (signup signin)
 Route::post('/signup', [UserController::class, 'signUp']);
 Route::post('/signin', [UserController::class, 'signIn']);
