@@ -6,10 +6,15 @@ use App\Models\client;
 use App\Models\reservation;
 use App\Models\room;
 use App\Models\User;
+use App\Models\payment;
+use App\Models\invoice;
 use App\Models\serviceRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Crypt;
+use Carbon\Carbon;
 
 class ClientController extends Controller
 {
@@ -247,5 +252,114 @@ class ClientController extends Controller
 
     //paiement 
 
+        // make paiement
+
+public function makePayment(Request $request)
+{
+
+    $reservation = Reservation::find($request->reservation_id);
+    
+    if (!$reservation) {
+        return response()->json([
+            'message' => 'Reservation not found',
+            'reservation_id' => $request->reservation_id
+        ], 404);
+    }
+    // 1. Validation des données
+    $validator = Validator::make($request->all(), [
+        'reservation_id' => 'required|exists:reservation,ID_RESERVATION',
+        'amount' => 'required|numeric|min:100',
+        'method' => 'required|in:cash,credit_card,bank_transfer',
+        'first_name' => 'required_if:method,credit_card|string|max:100',
+        'last_name' => 'required_if:method,credit_card|string|max:100',
+        'card_number' => 'required_if:method,credit_card|string|size:16',
+        'expiration_date' => [
+            'required_if:method,credit_card',
+            'date_format:m/y',
+            function ($attribute, $value, $fail) {
+                $expiry = Carbon::createFromFormat('m/y', $value);
+                if ($expiry->lessThan(Carbon::now())) {
+                    $fail('The card has expired.');
+                }
+            }
+        ],
+        'cvv' => 'required_if:method,credit_card|string|size:3',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Validation failed',
+            'errors' => $validator->errors()
+        ], 422);
+    }
+
+    DB::beginTransaction();
+    try {
+        // 2. Récupération de la réservation
+        $reservation = Reservation::find($request->reservation_id);
+        
+        if (!$reservation) {
+            return response()->json(['message' => 'Reservation not found'], 404);
+        }
+
+        // 3. Création du paiement
+        $paymentData = [
+            'ID_RESERVATION' => $reservation->ID_RESERVATION,
+            'AMOUNT' => $request->amount,
+            'METHOD' => $request->method,
+            'STATUS' => 'completed',
+            'PAYMENT_DATE' => now(),
+            'TRANSACTION_ID' => 'PAY-' . Str::random(16)
+        ];
+
+        if ($request->method === 'credit_card') {
+            $paymentData = array_merge($paymentData, [
+                'FIRST_NAME' => $request->first_name,
+                'LAST_NAME' => $request->last_name,
+                'CARD_NUMBER' => Crypt::encryptString($request->card_number),
+                'EXPIRATION_DATE' => $request->expiration_date,
+                'CVV' => Crypt::encryptString($request->cvv)
+            ]);
+        }
+
+        $payment = Payment::create($paymentData);
+
+        // 4. Mise à jour de la réservation
+        $reservation->update(['STATUS' => 'confirmed']);
+
+        // 5. Mise à jour de la chambre si nécessaire
+        if ($reservation->ID_ROOM) {
+            Room::where('ID_ROOM', $reservation->ID_ROOM)
+               ->update(['AVAILABLE' => false]);
+        }
+
+        // 6. Création/Mise à jour de la facture
+        $invoice = Invoice::updateOrCreate(
+            ['ID_RESERVATION' => $reservation->ID_RESERVATION],
+            [
+                'AMOUNT' => $request->amount,
+                'STATUS' => 'paid',
+                'CREATED_AT' => now()
+            ]
+        );
+
+        DB::commit();
+
+        return response()->json([
+            'message' => 'Payment processed successfully',
+            'payment_id' => $payment->ID_PAYMENT,
+            'transaction_id' => $payment->TRANSACTION_ID,
+            'reservation_status' => 'confirmed',
+            'invoice_id' => $invoice->ID_INVOICE ?? null
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Payment processing failed',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 
 }

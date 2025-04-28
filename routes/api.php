@@ -56,6 +56,10 @@ Route::delete('/deletemaintenance/{id}', [AdminController::class, 'deleteMainten
     // Routes service 
     Route::post('/servicerequest', [ClientController::class, 'requestService']);
 
+    // Routes payment 
+    
+    Route::post('/makepayment', [ClientController::class, 'makePayment']);
+
 //Routes employee(compte , reservation , paiement , service , rooms )
 
     // update compte 
@@ -70,3 +74,6 @@ Route::delete('/deletemaintenance/{id}', [AdminController::class, 'deleteMainten
     //  reservation 
     Route::post('/createreserva', [EmployeeController::class, 'createReservationAsEmployee']);
     Route::delete('/deletereserva/{reservationId}', [EmployeeController::class, 'deleteReservation']);
+
+    // paiement
+    Route::post('/payments', [EmployeeController::class, 'makePayment']);

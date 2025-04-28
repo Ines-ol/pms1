@@ -31,4 +31,9 @@ class reservation extends Model
     {
         return $this->hasOne(Invoice::class, 'ID_RESERVATION');
     }
+    public function payments()
+{
+    return $this->hasMany(Payment::class, 'ID_RESERVATION');
+}
+    
 }

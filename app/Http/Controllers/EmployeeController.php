@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Models\room;
 use App\Models\client;
 use App\Models\reservation;
+use App\Models\payment;
+use App\Models\invoice;
 use App\Models\serviceRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -279,5 +281,80 @@ class EmployeeController extends Controller
         ], 500);
     }
     }
- 
+    
+    // payment 
+
+        // make payment
+
+        public function makePayment(Request $request)
+{
+    // Validation des données
+    $validator = Validator::make($request->all(), [
+        'reservation_id' => 'required|exists:reservation,ID_RESERVATION',
+        'amount' => 'required|numeric|min:0.01',
+        'method' => 'required|in:cash,credit_card,bank_transfer',
+        'first_name' => 'required_if:method,credit_card|string|max:100',
+        'last_name' => 'required_if:method,credit_card|string|max:100',
+        'card_number' => 'required_if:method,credit_card|string|max:20',
+        'expiration_date' => 'required_if:method,credit_card|string|max:10',
+        'cvv' => 'required_if:method,credit_card|string|max:4',
+        'transaction_id' => 'sometimes|string|max:100'
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Validation error',
+            'errors' => $validator->errors()
+        ], 400);
+    }
+
+    DB::beginTransaction();
+    try {
+        // Vérifier que la réservation existe
+        $reservation = Reservation::find($request->reservation_id);
+        if (!$reservation) {
+            return response()->json([
+                'message' => 'Reservation not found'
+            ], 404);
+        }
+
+        // Créer le paiement
+        $payment = Payment::create([
+            'ID_RESERVATION' => $request->reservation_id,
+            'FIRST_NAME' => $request->first_name,
+            'LAST_NAME' => $request->last_name,
+            'CARD_NUMBER' => $request->card_number,
+            'EXPIRATION_DATE' => $request->expiration_date,
+            'CVV' => $request->cvv,
+            'METHOD' => $request->method,
+            'AMOUNT' => $request->amount,
+            'STATUS' => 'completed', // Directement marqué comme complété pour l'employee
+            'TRANSACTION_ID' => $request->transaction_id ?? null,
+            'PAYMENT_DATE' => now()
+        ]);
+
+        // Mettre à jour le statut de la facture associée si elle existe
+        $invoice = Invoice::where('ID_RESERVATION', $request->reservation_id)->first();
+        if ($invoice) {
+            $invoice->STATUS = 'paid';
+            $invoice->save();
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'message' => 'Payment processed successfully',
+            'payment_id' => $payment->ID_PAYMENT,
+            'amount' => $payment->AMOUNT,
+            'method' => $payment->METHOD
+        ], 201);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Payment processing failed',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }

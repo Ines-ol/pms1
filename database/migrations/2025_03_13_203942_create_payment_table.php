@@ -16,9 +16,9 @@ return new class extends Migration
             $table->unsignedBigInteger('ID_RESERVATION')->nullable();
             $table->string('FIRST_NAME', 100)->nullable();
             $table->string('LAST_NAME', 100)->nullable();
-            $table->string('CARD_NUMBER', 20)->nullable();
+            $table->string('CARD_NUMBER', 255)->nullable();
             $table->string('EXPIRATION_DATE', 10)->nullable(); // Format: MM/YYYY
-            $table->string('CVV', 4)->nullable();
+            $table->string('CVV', 255)->nullable();
             $table->enum('METHOD', ['cash', 'credit_card', 'bank_transfer', ])->nullable();
             $table->double('AMOUNT');
             $table->enum('STATUS', ['pending', 'completed'])->default('pending');
